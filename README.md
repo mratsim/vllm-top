@@ -39,6 +39,11 @@ metrics to vLLM's.
 
 ## Quick start
 
+Prebuilt binaries for Linux (x86_64 / arm64), Windows (x86_64 / arm64) and
+macOS (universal) are attached to each release — grab the one for your
+platform from the [Releases](https://github.com/mratsim/vllm-top/releases)
+page, or build from source:
+
 ```
 cargo install --path .      # installs `vllm-top`
 ```
