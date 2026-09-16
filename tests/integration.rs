@@ -370,8 +370,8 @@ fn mix(decode: f64, prefill: f64) -> Sample {
     parse(&format!(
         "# TYPE vllm:generation_tokens_total counter\n\
          vllm:generation_tokens_total {decode}\n\
-         # TYPE vllm:prompt_tokens_total counter\n\
-         vllm:prompt_tokens_total {prefill}\n\
+         # TYPE vllm:prompt_tokens_by_source_total counter\n\
+         vllm:prompt_tokens_by_source_total{{source=\"local_compute\"}} {prefill}\n\
          # TYPE vllm:num_requests_running gauge\n\
          vllm:num_requests_running 4\n"
     ))
@@ -812,8 +812,8 @@ fn stall_sample(decode: Option<f64>, prefill: f64, running: f64, helper: Option<
         body.push_str(&format!("vllm:generation_tokens_total {v}\n"));
     }
     body.push_str(&format!(
-        "# TYPE vllm:prompt_tokens_total counter\n\
-         vllm:prompt_tokens_total {prefill}\n\
+        "# TYPE vllm:prompt_tokens_by_source_total counter\n\
+         vllm:prompt_tokens_by_source_total{{source=\"local_compute\"}} {prefill}\n\
          # TYPE vllm:num_requests_running gauge\n\
          vllm:num_requests_running {running}\n\
          # TYPE m:c counter\n"
@@ -1215,10 +1215,10 @@ fn decode_instant_is_the_most_recent_interval() {
 #[test]
 fn prefill_rates_span_all_three_windows() {
     let d = busy_derived();
-    assert_eq!(d.prefill_rate[0], Some(100.0));
-    assert_eq!(d.prefill_rate[1], Some(100.0));
-    assert_eq!(d.prefill_rate[2], Some(100.0));
-    assert_eq!(d.prefill_instant, Some(100.0));
+    assert_eq!(d.prefill_rate[0], Some(10.0));
+    assert_eq!(d.prefill_rate[1], Some(10.0));
+    assert_eq!(d.prefill_rate[2], Some(10.0));
+    assert_eq!(d.prefill_instant, Some(10.0));
 }
 
 // The pool rows carry the usage ratio plus the engine-reported absolute
@@ -1735,7 +1735,7 @@ fn cpu_scheduler_rate_counts_seconds_per_second() {
 fn busy_graph_lanes_replay_the_intervals() {
     let d = busy_derived();
     assert_eq!(d.graphs.decode.vals, vec![40.0; 5]);
-    assert_eq!(d.graphs.prefill.vals, vec![100.0; 5]);
+    assert_eq!(d.graphs.prefill.vals, vec![10.0; 5]);
     assert_eq!(d.graphs.decode.absent_old, vec![false; 5]);
     assert_eq!(d.graphs.decode.absent_new, vec![false; 5]);
     assert_eq!(d.graphs.dt, vec![1.0; 5]);
@@ -1819,8 +1819,8 @@ fn session_peaks_only_grow_until_a_counter_reset() {
         let body = format!(
             "# TYPE vllm:generation_tokens_total counter\n\
              vllm:generation_tokens_total {v}\n\
-             # TYPE vllm:prompt_tokens_total counter\n\
-             vllm:prompt_tokens_total {}\n\
+             # TYPE vllm:prompt_tokens_by_source_total counter\n\
+             vllm:prompt_tokens_by_source_total{{source=\"local_compute\"}} {}\n\
              # TYPE vllm:num_requests_running gauge\n\
              vllm:num_requests_running 4\n",
             100.0 * i as f64

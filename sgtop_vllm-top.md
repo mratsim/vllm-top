@@ -10,7 +10,7 @@ implementation detail of the port, not something a vLLM operator reads.
 | sgtop metric | vLLM equivalent | Notes |
 |---|---|---|
 | `sglang:realtime_tokens_total{mode="decode"}` | `vllm:generation_tokens_total` | Counter, decode lane |
-| `sglang:realtime_tokens_total{mode="prefill_compute"}` | `vllm:prompt_tokens_total` | Counter, prefill lane |
+| `sglang:realtime_tokens_total{mode="prefill_compute"}` | `vllm:prompt_tokens_by_source_total{source="local_compute"}` | Counter, prefill lane |
 | `sglang:prefill_effective_tokens_total{mode="input"}` | `vllm:prompt_tokens_by_source_total{source="local_compute"}` | Cache-miss / computed lane |
 | `sglang:prefill_effective_tokens_total{mode="device_hit"}` | `vllm:prompt_tokens_by_source_total{source="local_cache_hit"}` | Cache-hit lane |
 | `sglang:num_running_reqs` | `vllm:num_requests_running` | Gauge |
@@ -23,6 +23,13 @@ implementation detail of the port, not something a vLLM operator reads.
 | `sglang:spec_accept_rate` | `vllm:spec_decode_num_accepted_tokens_total` | Derived |
 | `sglang:spec_accept_length` | `vllm:spec_decode_num_draft_tokens_total` | Derived |
 | `sglang:scheduler_process_cpu_seconds_total` | `vllm:scheduler_compute_seconds_total` | Counter, `{class="prefill"/"decode"}` |
+
+`vllm:prompt_tokens_total` is deliberately **not** used for the prefill lane: it
+counts prompt tokens from every source, cache hits included. A compaction or a
+cached-prompt burst inflates it, and the stall detector (which requires a
+positive prefill rate) would read that as a stall. Both the prefill lane and the
+cache-miss lane therefore read the compute-only counter
+`prompt_tokens_by_source_total{source="local_compute"}`.
 
 ## Approximate — relabeled honestly
 

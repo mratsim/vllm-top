@@ -33,15 +33,16 @@ fn decode_lane() -> impl Fn(&SeriesKey) -> bool + Copy {
 /// vLLM prompt-token counter, split by where the tokens came from.
 /// `local_compute` is the prompt text the prefix cache did not hold
 /// (the cache misses the device chewed) — the prefill-compute lane.
+/// `prompt_tokens_total` counts cache hits too, so it is not a prefill
+/// rate: a compaction or cached-prompt burst inflates it, and the stall
+/// detector (which requires a positive prefill rate) would read that as
+/// a stall. The prefill lane and the cache-miss lane therefore both read
+/// the compute-only counter.
 const PROMPT_BY_SOURCE: &str = "vllm:prompt_tokens_by_source_total";
 const SOURCE_COMPUTE: &str = "local_compute";
 
-/// vLLM total prompt-token counter: the aggregate prefill processing
-/// throughput, cache hits included. The prefill graph lane.
-const PROMPT_TOTAL: &str = "vllm:prompt_tokens_total";
-
 fn prefill_lane() -> impl Fn(&SeriesKey) -> bool + Copy {
-    fam(PROMPT_TOTAL)
+    fam_labeled(PROMPT_BY_SOURCE, "source", SOURCE_COMPUTE)
 }
 
 fn input_lane() -> impl Fn(&SeriesKey) -> bool + Copy {
