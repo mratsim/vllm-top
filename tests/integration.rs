@@ -405,6 +405,63 @@ fn stall_signature_detected() {
     assert_eq!(d.stalls[0].count, 0);
 }
 
+// A decode freeze with requests queued is a stall even when no prefill is
+// computing: the engine has work waiting but is not converting it into
+// decode output. The queue is what marks it — the same freeze with no queue
+// and no prefill is an idle engine, not a stall. A queue with decode still
+// advancing is pressure, not a block.
+#[test]
+fn stall_fires_on_queued_decode_without_prefill() {
+    let build = |decode: f64, waiting: f64| {
+        parse(&format!(
+            "# TYPE vllm:generation_tokens_total counter\n\
+             vllm:generation_tokens_total {decode}\n\
+             # TYPE vllm:prompt_tokens_by_source_total counter\n\
+             vllm:prompt_tokens_by_source_total{{source=\"local_compute\"}} 0\n\
+             # TYPE vllm:num_requests_running gauge\n\
+             vllm:num_requests_running 2\n\
+             # TYPE vllm:num_requests_waiting gauge\n\
+             vllm:num_requests_waiting {waiting}\n"
+        ))
+        .unwrap()
+    };
+    // decode runs 40 tok/s for three intervals, then freezes at 120 while a
+    // queue of 3 forms. The freeze intervals are flagged; the busy ones are not.
+    let mut h = History::default();
+    let t0 = Instant::now();
+    for (i, (decode, waiting)) in [
+        (0.0, 0.0),
+        (40.0, 0.0),
+        (80.0, 0.0),
+        (120.0, 3.0),
+        (120.0, 3.0),
+        (120.0, 3.0),
+    ]
+    .iter()
+    .enumerate()
+    {
+        h.push(t0 + Duration::from_secs(i as u64), build(*decode, *waiting));
+    }
+    let d = derive(&h, 0).unwrap();
+    assert_eq!(d.graphs.stall, vec![false, false, false, true, true]);
+    assert_eq!(d.stalls[0].count, 2);
+
+    // the same freeze with no queue and no prefill: an idle engine, not a stall
+    let mut h = History::default();
+    for (i, decode) in [0.0, 40.0, 80.0, 120.0, 120.0, 120.0]
+        .iter()
+        .enumerate()
+    {
+        h.push(
+            t0 + Duration::from_secs(i as u64),
+            build(*decode, 0.0),
+        );
+    }
+    let d = derive(&h, 0).unwrap();
+    assert_eq!(d.graphs.stall, vec![false, false, false, false, false]);
+    assert_eq!(d.stalls[0].count, 0);
+}
+
 #[test]
 fn windows_cover_expected_spans() {
     assert_eq!(WINDOWS.len(), 3);

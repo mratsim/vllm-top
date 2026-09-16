@@ -406,8 +406,10 @@ impl Lane {
 ///   included. The full-window median is the bar, so the window's busy
 ///   level sets it
 /// - threshold: decode rate below 0.25 × that median, while the interval's
-///   later sample reports requests running and prefill was computing
-///   (a positive prefill rate)
+///   later sample shows the engine had work it was not converting into
+///   decode output: either requests were running and prefill was computing
+///   (decode starved by prefill), or requests were queued waiting to start
+///   (decode enqueued/blocked behind the queue).
 ///
 /// Gaps: the parse boundary drops non-finite counter readings, so a NaN
 /// blink is a sample whose series is absent. Unreadable data is a gap,
@@ -430,6 +432,7 @@ pub fn scan_window(h: &History) -> Graphs {
     let mut prefill = Lane::default();
     let mut evictions = Lane::default();
     let mut running: Vec<f64> = Vec::new();
+    let mut queue: Vec<f64> = Vec::new();
     let mut ttft_p95: Vec<Option<f64>> = Vec::new();
     let mut cache_misses: Vec<Option<f64>> = Vec::new();
     let mut per_stream: Vec<Option<f64>> = Vec::new();
@@ -472,6 +475,11 @@ pub fn scan_window(h: &History) -> Graphs {
             .gauge("vllm:num_requests_running")
             .unwrap_or(0.0);
         running.push(running_at);
+        let waiting_at = pair[1]
+            .sample
+            .gauge("vllm:num_requests_waiting")
+            .unwrap_or(0.0);
+        queue.push(waiting_at);
         // an absent decode endpoint leaves the lane's rate at 0. Displayed
         // against a positive running count, that absence reads as a measured
         // collapse: missing data stores no speed instead
@@ -499,12 +507,15 @@ pub fn scan_window(h: &History) -> Graphs {
     let median = median_of(&decode.vals);
     let stall: Vec<bool> = (0..decode.vals.len())
         .map(|i| {
-            running[i] > 0.0
-                && prefill.vals[i] > 0.0
-                && (gap_after_seen[i]
-                    || (!decode.absent_old[i]
-                        && !decode.absent_new[i]
-                        && decode.vals[i] < 0.25 * median))
+            let frozen = gap_after_seen[i]
+                || (!decode.absent_old[i]
+                    && !decode.absent_new[i]
+                    && decode.vals[i] < 0.25 * median);
+            // the engine was working through the interval without producing
+            // decode output: either requests were running and a prefill was
+            // computing (decode starved by prefill), or requests were queued
+            // waiting to start (decode enqueued/blocked behind the queue).
+            frozen && (queue[i] > 0.0 || (running[i] > 0.0 && prefill.vals[i] > 0.0))
         })
         .collect();
 
