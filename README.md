@@ -64,30 +64,10 @@ transit without TLS verification.
 | `+` / `-` | poll interval (clamped 0.5–10s) |
 | `↑` `↓` | scroll the explain screen |
 
-## Metric mapping (sglang → vLLM)
+## Maintainers
 
-| sgtop metric | vLLM equivalent |
-|---|---|
-| `realtime_tokens_total{mode=decode}` | `generation_tokens_total` |
-| `realtime_tokens_total{mode=prefill_compute}` | `prompt_tokens_total` |
-| `prefill_effective_tokens_total{mode=input}` | `prompt_tokens_by_source_total{source="local_compute"}` |
-| `prefill_effective_tokens_total{mode=device_hit}` | `prompt_tokens_by_source_total{source="local_cache_hit"}` |
-| `num_running_reqs` / `num_queue_reqs` | `num_requests_running` / `num_requests_waiting` |
-| `token_usage` / `kv_used_tokens` / `max_total_num_tokens` | `kv_cache_usage_perc` × `cache_config_info{kv_cache_size_tokens}` |
-| `cache_hit_rate` | `prefix_cache_hits_total` / `prefix_cache_queries_total` |
-| `evicted_tokens_total` | `num_preemptions_total` |
-| `num_retracted_reqs` | `request_success_total{finished_reason="abort"}` |
-| `http_responses_total{status_code="503"}` | `http_requests_total{status="5xx"}` |
-| `hicache_backup_tokens_total` | `kv_offload_store_bytes_total` |
-| `load_back_tokens_total` | `kv_offload_load_bytes_total` |
-| `hicache_dropped_tokens_total` | `kv_offload_allocation_failure_total` |
-| `spec_accept_rate` / `spec_accept_length` | `spec_decode_num_accepted_tokens_total` / `…_num_draft_tokens_total` |
-| `scheduler_process_cpu_seconds_total` | `scheduler_compute_seconds_total` |
-
-The mamba/SWA pools, tokenizer/detokenizer CPU split, and the decode
-sequence-length sum have no vLLM equivalent and are dropped; the health
-counters that map only approximately are relabeled honestly (preempt/s,
-abort/s, 5xx/s, alloc fail/s).
+The sglang → vLLM metric mapping used for the port is documented separately
+in [`sgtop_vllm-top.md`](sgtop_vllm-top.md).
 
 ## Build
 
