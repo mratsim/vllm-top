@@ -6,6 +6,13 @@ and the health counters vLLM actually exposes. Portable binary, no storage,
 no daemon. A port of [sgtop](https://github.com/mratsim/sgtop) from sglang's
 metrics to vLLM's.
 
+<p align="center">
+  <img src="media/screenshot.png" alt="vllm-top dashboard: full-width prefill
+  and decode graphs with the single-stream line in its own color, the TTFT plot
+  colored by how good its p95 is (amber here), a cache-miss plot, a fired stall
+  in the health panel, and the latency table" width="100%">
+</p>
+
 ## Features
 
 - **Rate histograms.** Prefill and decode tok/s share the full terminal
