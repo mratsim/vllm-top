@@ -1,0 +1,18 @@
+[package]
+name = "vllm-top"
+version = "0.1.0"
+edition = "2021"
+description = "btop-style live TUI for a vLLM inference server"
+license = "GPL-3.0"
+
+[dependencies]
+ratatui = "0.29"
+crossterm = "0.28"
+ureq = { version = "2", default-features = false, features = ["tls"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+
+[profile.release]
+lto = true
+strip = true
