@@ -44,4 +44,11 @@ pub struct Args {
     /// Print one text snapshot and exit (for scripts/logs).
     #[arg(long)]
     pub once: bool,
+    /// Run the TUI inside ttyd for browser access.
+    #[arg(long)]
+    pub web: bool,
+
+    /// Port for the ttyd web server (default: 3000).
+    #[arg(long, default_value_t = 3000)]
+    pub web_port: u16,
 }

@@ -47,7 +47,40 @@ fn main() -> Result<()> {
         (args.interval.clamp(0.5, 10.0) * 1000.0) as u64,
         Ordering::Relaxed,
     );
-    scrape::spawn_scraper(shared.clone(), url, args.api_key.clone(), args.insecure);
+    scrape::spawn_scraper(shared.clone(), url.clone(), args.api_key.clone(), args.insecure);
+
+    if args.web {
+        let exe = std::env::current_exe()?.canonicalize()?;
+        let mut cmd = std::process::Command::new("ttyd");
+        cmd.arg("-p").arg(args.web_port.to_string());
+        cmd.arg("--writable");
+        
+        let mut full_args = vec![exe.to_string_lossy().into_owned()];
+        let mut skip_next = false;
+        for arg in std::env::args().skip(1) {
+            if skip_next {
+                skip_next = false;
+                continue;
+            }
+            if arg == "--web" {
+                continue;
+            } else if arg == "--web-port" {
+                skip_next = true;
+                continue;
+            }
+            full_args.push(arg);
+        }
+
+        for arg in full_args {
+            cmd.arg(arg);
+        }
+
+        println!("Launching TUI in browser at http://localhost:{}", args.web_port);
+        let mut child = cmd.spawn()?;
+        let _status = child.wait()?;
+        return Ok(());
+    }
+
 
     let mut terminal = ratatui::init();
     let mut ui_state = ui::Ui::new(&args);
