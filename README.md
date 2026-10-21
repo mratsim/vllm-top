@@ -56,7 +56,10 @@ vllm-top --url http://localhost:8000 --interval 1.0
 vllm-top --url https://gpu-box.home.example.org --insecure   # self-signed proxy
 vllm-top --api-key sk-...                   # if the server uses an API key
 vllm-top --once                             # one text snapshot, for scripts/cron
+vllm-top --web --web-port 3000            # exposes the TUI via browser at :3000
 ```
+
+Web mode requires `ttyd` to be installed on the host.
 
 `--insecure` accepts any server certificate: the bearer token and the metrics
 transit without TLS verification.
